@@ -1,7 +1,10 @@
 #pragma once
 
 #include <Component/SimpleScene.h>
+
 using namespace std;
+
+
 typedef struct {
 	glm::vec3 p[8]; //pozitie
 	glm::vec3 n[8]; //normala
@@ -19,7 +22,6 @@ typedef struct {
 class MarchingCubes : public SimpleScene
 {
 	
-
 	public:
 		MarchingCubes();
 		~MarchingCubes();

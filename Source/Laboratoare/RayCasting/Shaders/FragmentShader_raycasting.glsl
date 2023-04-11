@@ -20,7 +20,7 @@ void main()
     float len = 0;// lungimea razei e calculata pentru terminarea razei
     vec3 deltaDir = vec3(0);	//TODO calculeaza vectorul delta cu care se inainteaza pe raza, in functie de StepSize si de directia razei
     float deltaDirLen = StepSize;	
-    vec3 voxelCoord = EntryPoint;rfthygol 
+    vec3 voxelCoord = EntryPoint; 
     vec4 colorAcum = vec4(0.0);		// culoarea acumulata (Cdst)
     float alphaAcum = 0.0;          // opacitatea acumulata (Adst)
     float intensity;
