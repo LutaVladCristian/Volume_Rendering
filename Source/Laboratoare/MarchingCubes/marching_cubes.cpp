@@ -372,14 +372,14 @@ void MarchingCubes::OnInputUpdate(float deltaTime, int mods)
 	{
 
 		isolevel += 100 * deltaTime;
-		cout << isolevel << endl;
+		cout << "Iso value:" << isolevel << endl;
 		reconstructSurface(meshes["volume"]);
 	}
 		
 	if (window->KeyHold(GLFW_KEY_X) && isolevel > 5)
 	{
 		isolevel -= 100 * deltaTime;
-		cout << isolevel << endl;
+		cout << "Iso value:" << isolevel << endl;
 		reconstructSurface(meshes["volume"]);
 	}
 };
