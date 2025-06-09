@@ -5,6 +5,9 @@
 #include <include/gl.h>
 #include <include/glm.h>
 
+// Forward declaration to avoid circular dependency with InputController
+class InputController;
+
 class WindowProperties
 {
 	public:
