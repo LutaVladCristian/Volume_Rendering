@@ -20,11 +20,13 @@ target_link_directories(Volume_Rendering PRIVATE
         libs/GLFW/x64/Debug
         libs/GL/x64/Release
         libs/Engine/x64/Debug
+        libs/assimp/x64/Debug
 )
 
 target_link_libraries(Volume_Rendering
         glfw3dll.lib
         glew32.lib
         Components.lib
+        assimp.lib
         opengl32.lib
 )
