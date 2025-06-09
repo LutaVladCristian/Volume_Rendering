@@ -5,6 +5,8 @@
 #include <include/gl.h>
 #include <include/glm.h>
 
+class InputController; // forward declaration
+
 class WindowProperties
 {
 	public:
