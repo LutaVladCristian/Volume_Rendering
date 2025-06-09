@@ -17,9 +17,9 @@ file(GLOB_RECURSE SOURCES
 add_executable(Volume_Rendering ${SOURCES})
 
 target_link_directories(Volume_Rendering PRIVATE
-        libs/GLFW/x86/Debug
-        libs/GL/x86/Release
-        libs/Engine/x86/Debug
+        libs/GLFW/x64/Debug
+        libs/GL/x64/Release
+        libs/Engine/x64/Debug
 )
 
 target_link_libraries(Volume_Rendering
