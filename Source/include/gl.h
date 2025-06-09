@@ -6,9 +6,12 @@
 	#define GLEW_ENABLED
 	#include <GL/glew.h>
 
-	#ifdef _WIN32
-		#include <GL/wglew.h>
-	#endif
+        #ifdef _WIN32
+                // Include Windows headers before wglew to ensure types like
+                // HGLRC and BOOL are available
+                #include <windows.h>
+                #include <GL/wglew.h>
+        #endif
 
 	#if defined(__linux__)
 		#include <GL/glxew.h>
