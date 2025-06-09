@@ -1,18 +1,33 @@
-# General
-/*
-!.gitignore
+# Fisiere generate de build
+/build*/
+/cmake-build-*/
+/Debug/
+/Release/
 
-!/Visual Studio
-/Visual Studio/*
-!/Visual Studio/Property Sheets
-!/Visual Studio/*.sln
-!/Visual Studio/*.vcxproj
-!/Visual Studio/*.vcxproj.user
-!/Visual Studio/*.vcxproj.filters
-!/Visual Studio/scripts/
+# CLion
+.idea/
 
-# Application
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.VC.db
+*.sdf
+*.opensdf
 
-!/libs
-!/Resources
-!/Source
+# Output-uri binare
+*.exe
+*.dll
+*.lib
+*.pdb
+*.obj
+*.o
+*.a
+*.so
+
+# Librarii precompilate din proiect (opțional)
+libs/**/x64/
+libs/**/x86/
+
+# Fisiere temporare OS
+.DS_Store
+Thumbs.db

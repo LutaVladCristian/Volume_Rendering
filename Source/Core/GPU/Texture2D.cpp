@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include <include/gl.h>
+#include <cmath>
 
 using namespace std;
 
