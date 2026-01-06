@@ -1,18 +1,15 @@
-# General
-/*
-!.gitignore
+# Build directories
+/build/
+/out/
 
-!/Visual Studio
-/Visual Studio/*
-!/Visual Studio/Property Sheets
-!/Visual Studio/*.sln
-!/Visual Studio/*.vcxproj
-!/Visual Studio/*.vcxproj.user
-!/Visual Studio/*.vcxproj.filters
-!/Visual Studio/scripts/
+# IDE files
+.vs/
+*.user
+*.suo
+*.cursor
 
-# Application
-
-!/libs
-!/Resources
-!/Source
+# Compiled binaries
+*.exe
+*.dll
+*.obj
+*.pdb
