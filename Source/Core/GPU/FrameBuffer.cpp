@@ -19,20 +19,27 @@ FrameBuffer::FrameBuffer()
 	depthTexture = nullptr;
 	textures = nullptr;
 	DrawBuffers = nullptr;
+	depthRenderbuffer = 0;
+	width = 0;
+	height = 0;
+	nrTextures = 0;
 	clearColor = glm::vec4(0, 0, 0, 1);
 }
 
 FrameBuffer::~FrameBuffer()
 {
-	SAFE_FREE(depthTexture);
+	Clean();
 }
 
 void FrameBuffer::Clean()
 {
 	if (FBO)
 		glDeleteFramebuffers(1, &FBO);
+	FBO = 0;
 	SAFE_FREE_ARRAY(textures);
-	SAFE_FREE_ARRAY(DrawBuffers)
+	SAFE_FREE_ARRAY(DrawBuffers);
+	SAFE_FREE(depthTexture);
+	nrTextures = 0;
 }
 
 void FrameBuffer::Generate(int width, int height, int nrTextures, bool hasDepthTexture, int precision)

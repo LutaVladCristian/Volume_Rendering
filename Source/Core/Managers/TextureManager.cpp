@@ -4,6 +4,8 @@
 #include <Core/GPU/Texture2D.h>
 #include <Core/Managers/ResourcePath.h>
 
+#include <unordered_set>
+
 using namespace std;
 
 std::unordered_map<std::string, Texture2D*> TextureManager::mapTextures;
@@ -19,13 +21,17 @@ void TextureManager::Init()
 	LoadTexture(RESOURCE_PATH::TEXTURES, "particle.png");
 }
 
-//TextureManager::~TextureManager()
-//{
-//	// delete textures
-//	unsigned int size = (unsigned int) vTextures.size();
-//	for (unsigned int i=0; i <size; ++i)
-//		SAFE_FREE(vTextures[i]);
-//}
+void TextureManager::Clear()
+{
+	unordered_set<Texture2D*> released;
+	for (auto texture : vTextures)
+	{
+		if (texture && released.insert(texture).second)
+			delete texture;
+	}
+	vTextures.clear();
+	mapTextures.clear();
+}
 
 Texture2D* TextureManager::LoadTexture(const string &path, const char *fileName, const char *key, bool forceLoad, bool cacheInRAM)
 {
@@ -45,7 +51,7 @@ Texture2D* TextureManager::LoadTexture(const string &path, const char *fileName,
 		if (status == false)
 		{
 			delete texture;
-			return vTextures[0];
+			return vTextures.empty() ? nullptr : vTextures[0];
 		}
 
 		vTextures.push_back(texture);
@@ -61,9 +67,8 @@ void TextureManager::SetTexture(string name, Texture2D *texture)
 
 Texture2D* TextureManager::GetTexture(const char* name)
 {
-	if (mapTextures[name])
-		return mapTextures[name];
-	return NULL;
+	auto texture = mapTextures.find(name);
+	return texture == mapTextures.end() ? nullptr : texture->second;
 }
 
 Texture2D* TextureManager::GetTexture(unsigned int textureID)

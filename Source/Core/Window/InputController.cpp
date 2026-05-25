@@ -11,6 +11,8 @@ InputController::InputController()
 
 InputController::~InputController()
 {
+	if (isAttached && window)
+		window->UnsubscribeFromEvents(this);
 }
 
 bool InputController::IsActive() const

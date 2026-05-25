@@ -23,7 +23,9 @@ class MarchingCubes : public SimpleScene
 {
 	
 	public:
-		MarchingCubes();
+		MarchingCubes(const string& volumeFile = "Resources/Volumes/Bucky.raw",
+			unsigned int width = 32, unsigned int height = 32, unsigned int depth = 32,
+			double initialIsolevel = 50.0);
 		~MarchingCubes();
 
 		void Init() override;
@@ -32,7 +34,7 @@ class MarchingCubes : public SimpleScene
 		bool loadRAWFile(const string& fileLocation, unsigned int xsize, unsigned int ysize, unsigned int zsize);
 		glm::vec3 VertexInterp(double isolevel, glm::vec3 p1, glm::vec3 p2, double valp1, double valp2);
 		glm::vec3 VertexNormal(int i, int j, int k);
-		int PolygoniseCube(GRIDCELL g, double iso, TRIANGLE *tri);
+		int PolygoniseCube(const GRIDCELL& g, double iso, TRIANGLE *tri);
 		void reconstructSurface(Mesh *mesh);
 
 	private:
@@ -54,6 +56,9 @@ class MarchingCubes : public SimpleScene
 		unsigned char *volumeData;
 		unsigned int xsize, ysize, zsize;
 		double isolevel;
-		TRIANGLE *tri;
+		string volumeFile;
+		unsigned int configuredWidth;
+		unsigned int configuredHeight;
+		unsigned int configuredDepth;
 
 };

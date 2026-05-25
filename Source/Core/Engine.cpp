@@ -42,6 +42,9 @@ void Engine::Exit()
 {
 	cout << "=====================================================" << endl;
 	cout << "Engine closed. Exit" << endl;
+	TextureManager::Clear();
+	delete window;
+	window = nullptr;
 	glfwTerminate();
 }
 

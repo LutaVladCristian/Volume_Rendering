@@ -49,6 +49,7 @@ class SimpleScene : public World
 	private:
 		EngineComponents::Camera *camera;
 		InputController *cameraInput;
+		InputController *sceneInput;
 
 		bool drawGroundPlane;
 		Mesh *xozPlane;
