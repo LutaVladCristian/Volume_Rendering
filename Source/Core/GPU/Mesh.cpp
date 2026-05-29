@@ -23,6 +23,7 @@ Mesh::~Mesh()
 {
 	ClearData();
 	meshEntries.clear();
+	buffers->ReleaseMemory();
 	SAFE_FREE(buffers);
 }
 
@@ -45,6 +46,8 @@ void Mesh::ClearData()
 	texCoords.clear();
 	indices.clear();
 	normals.clear();
+	vertices.clear();
+	materials.clear();
 }
 
 bool Mesh::LoadMesh(const string& fileLocation, const string& fileName)

@@ -40,11 +40,13 @@ class Texture2D
 		GLuint GetTextureID() const;
 
 	private:
+		void ReleaseImageData();
 		void SetTextureParameters();
 		void Init2DTexture(unsigned int width, unsigned int height, unsigned int channels);
 
 	private:
 		bool cacheInMemory;
+		bool imageAllocatedByStb;
 		unsigned int bitsPerPixel;
 		unsigned int width;
 		unsigned int height;

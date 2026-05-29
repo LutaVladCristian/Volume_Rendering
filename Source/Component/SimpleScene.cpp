@@ -13,12 +13,24 @@ using namespace std;
 using namespace EngineComponents;
 
 SimpleScene::SimpleScene()
+	: camera(nullptr), cameraInput(nullptr), sceneInput(nullptr), drawGroundPlane(true),
+	xozPlane(nullptr), simpleLine(nullptr), objectModel(nullptr)
 {
 	InitResources();
 }
 
 SimpleScene::~SimpleScene()
 {
+	delete cameraInput;
+	delete sceneInput;
+	for (auto& mesh : meshes)
+		delete mesh.second;
+	for (auto& shader : shaders)
+		delete shader.second;
+	delete xozPlane;
+	delete simpleLine;
+	delete objectModel;
+	delete camera;
 }
 
 void SimpleScene::InitResources()
@@ -40,7 +52,7 @@ void SimpleScene::InitResources()
 	cameraInput = new CameraInput(camera);
 	window = Engine::GetWindow();
 
-	SceneInput *SI = new SceneInput(this);
+	sceneInput = new SceneInput(this);
 
 	xozPlane = new Mesh("plane");
 	xozPlane->LoadMesh(RESOURCE_PATH::MODELS + "Primitives", "plane50.obj");

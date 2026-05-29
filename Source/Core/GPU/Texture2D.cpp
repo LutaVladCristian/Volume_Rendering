@@ -38,13 +38,30 @@ Texture2D::Texture2D()
 	textureID = 0;
 	bitsPerPixel = 8;
 	cacheInMemory = false;
+	imageAllocatedByStb = false;
 	targetType = GL_TEXTURE_2D;
 	wrappingMode = GL_REPEAT;
 	textureMinFilter = GL_LINEAR;
 	textureMagFilter = GL_LINEAR;
+	imageData = nullptr;
 }
 
 Texture2D::~Texture2D() {
+	ReleaseImageData();
+	if (textureID)
+		glDeleteTextures(1, &textureID);
+}
+
+void Texture2D::ReleaseImageData()
+{
+	if (!imageData)
+		return;
+	if (imageAllocatedByStb)
+		stbi_image_free(imageData);
+	else
+		delete[] imageData;
+	imageData = nullptr;
+	imageAllocatedByStb = false;
 }
 
 GLuint Texture2D::GetTextureID() const
@@ -62,6 +79,7 @@ void Texture2D::Init(GLuint gpuTextureID, unsigned int width, unsigned int heigh
 
 bool Texture2D::Load2D(const char* fileName, GLenum wrapping_mode)
 {
+	ReleaseImageData();
 	int width, height, chn;
 	imageData = stbi_load(fileName, &width, &height, &chn, 0);
 
@@ -71,6 +89,7 @@ bool Texture2D::Load2D(const char* fileName, GLenum wrapping_mode)
 		#endif
 		return false;
 	}
+	imageAllocatedByStb = true;
 
 	#ifdef DEBUG_INFO
 	cout << "Loaded " << file_name << endl;
@@ -87,9 +106,7 @@ bool Texture2D::Load2D(const char* fileName, GLenum wrapping_mode)
 	CheckOpenGLError();
 
 	if (cacheInMemory == false)
-	{
-		stbi_image_free(imageData);
-	}
+		ReleaseImageData();
 
 	return true;
 }
@@ -99,6 +116,7 @@ void Texture2D::SaveToFile(const char * fileName)
 	if (imageData == nullptr)
 	{
 		imageData = new unsigned char[width * height * channels];
+		imageAllocatedByStb = false;
 	}
 	glBindTexture(targetType, textureID);
 	glGetTexImage(targetType, 0, pixelFormat[channels], GL_UNSIGNED_BYTE, (void*)imageData);

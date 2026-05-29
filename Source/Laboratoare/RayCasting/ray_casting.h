@@ -9,7 +9,9 @@ class RayCasting : public SimpleScene
 	
 
 	public:
-		RayCasting();
+		RayCasting(const string& volumeFile = "Resources/Volumes/head256.raw",
+			unsigned int width = 256, unsigned int height = 256, unsigned int depth = 225,
+			const string& transferFunctionFile = "Resources/Volumes/tff.dat");
 		~RayCasting();
 
 		void Init() override;
@@ -39,5 +41,10 @@ class RayCasting : public SimpleScene
 		GLuint volumeTexture;
 		GLuint tfTexture;
 		float stepSize;
+		string volumeFile;
+		string transferFunctionFile;
+		unsigned int configuredWidth;
+		unsigned int configuredHeight;
+		unsigned int configuredDepth;
 
 };

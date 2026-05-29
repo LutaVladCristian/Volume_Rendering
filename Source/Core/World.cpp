@@ -62,10 +62,12 @@ void World::LoopUpdate()
 	// OnInputUpdate will be called each frame, the other functions are called only if an event is registered
 	window->UpdateObservers();
 
-	// Frame processing
-	FrameStart();
-	Update(static_cast<float>(deltaTime));
-	FrameEnd();
+	if (!paused)
+	{
+		FrameStart();
+		Update(static_cast<float>(deltaTime));
+		FrameEnd();
+	}
 
 	// Swap front and back buffers - image will be displayed to the screen
 	window->SwapBuffers();

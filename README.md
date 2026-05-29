@@ -2,6 +2,8 @@
 
 > *Because flat images are so 2D...*
 
+Implementation documentation: [`docs/README.md`](docs/README.md)
+
 A slick OpenGL-based volume rendering engine featuring **Marching Cubes** and **Ray Casting** techniques. Perfect for visualizing 3D volumetric data like brains, engines, and other cool stuff! 🔥
 
 ---

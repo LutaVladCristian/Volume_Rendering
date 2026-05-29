@@ -1,6 +1,8 @@
 #include "marching_cubes.h"
 #include "LookupTables.h"
 
+#include <algorithm>
+#include <stdexcept>
 #include <vector>
 #include <iostream>
 
@@ -10,16 +12,17 @@ using namespace std;
 
 float epsilon = 0.000001;
 
-MarchingCubes::MarchingCubes()
+MarchingCubes::MarchingCubes(const string& volumeFile, unsigned int width, unsigned int height,
+	unsigned int depth, double initialIsolevel)
+	: volumeData(nullptr), xsize(0), ysize(0), zsize(0), isolevel(initialIsolevel),
+	volumeFile(volumeFile), configuredWidth(width), configuredHeight(height),
+	configuredDepth(depth)
 {
 }
 
 MarchingCubes::~MarchingCubes()
 {
-	//distruge obiecte
-
-	if (volumeData) delete[] volumeData;
-	if (tri) delete[] tri;
+	delete[] volumeData;
 }
 
 bool MarchingCubes::loadRAWFile(const string& fileLocation, unsigned int x, unsigned int y, unsigned int z) //functie pentru a incarca datele de volum
@@ -27,7 +30,7 @@ bool MarchingCubes::loadRAWFile(const string& fileLocation, unsigned int x, unsi
 	
 	FILE *File = NULL;
 
-	if (!fileLocation.c_str())
+	if (fileLocation.empty())
 	{
 		return false;
 	}
@@ -40,17 +43,19 @@ bool MarchingCubes::loadRAWFile(const string& fileLocation, unsigned int x, unsi
 	xsize = x;
 	ysize = y;
 	zsize = z;
-	volumeData = new unsigned char[xsize * ysize * zsize]; //se aloca un string de caractere de pana la 8 biti
-
-	int sliceSize = xsize*ysize;
-
-	for (int slice = 0; slice < zsize; slice++) //se face segmentarea de-a lungul axei OZ 
-	{
-		fread(&volumeData[slice*ysize*xsize], sizeof(unsigned char), sliceSize, File);
-
-	}
-
+	delete[] volumeData;
+	volumeData = new unsigned char[xsize * ysize * zsize];
+	const size_t voxelCount = static_cast<size_t>(xsize) * ysize * zsize;
+	const size_t bytesRead = fread(volumeData, sizeof(unsigned char), voxelCount, File);
 	fclose(File);
+	if (bytesRead != voxelCount)
+	{
+		cerr << fileLocation << " contains " << bytesRead << " voxels; expected "
+			<< voxelCount << endl;
+		delete[] volumeData;
+		volumeData = nullptr;
+		return false;
+	}
 
 	return true;
 
@@ -78,7 +83,7 @@ glm::vec3 MarchingCubes::VertexInterp(double isolevel, glm::vec3 p1, glm::vec3 p
 }
 
 
-int MarchingCubes::PolygoniseCube(GRIDCELL g, double iso, TRIANGLE *tri) {
+int MarchingCubes::PolygoniseCube(const GRIDCELL& g, double iso, TRIANGLE *tri) {
 
 	int i, ntri = 0;
 	int cubeindex;
@@ -164,7 +169,6 @@ int MarchingCubes::PolygoniseCube(GRIDCELL g, double iso, TRIANGLE *tri) {
 		normal2 = normlist[triTable[cubeindex][i + 1]];
 		normal3 = normlist[triTable[cubeindex][i + 2]];
 
-		//TODO - calculeaza normala pe fiecare varf, ca interpolare de gradienti		
 		if (glm::length(normal1) > epsilon)
 			normal1 = glm::normalize(normal1);
 
@@ -188,33 +192,24 @@ int MarchingCubes::PolygoniseCube(GRIDCELL g, double iso, TRIANGLE *tri) {
 
 glm::vec3 MarchingCubes::VertexNormal(int i, int j, int k)
 {
+	const int maxX = static_cast<int>(xsize) - 1;
+	const int maxY = static_cast<int>(ysize) - 1;
+	const int maxZ = static_cast<int>(zsize) - 1;
+	auto sample = [this](int x, int y, int z) {
+		return static_cast<float>(volumeData[z * xsize * ysize + y * xsize + x]);
+	};
 
-	glm::vec3 normal(0);
+	const int left = max(0, i - 1);
+	const int right = min(maxX, i + 1);
+	const int down = max(0, j - 1);
+	const int up = min(maxY, j + 1);
+	const int back = max(0, k - 1);
+	const int front = min(maxZ, k + 1);
 
-	if (i - 1 < 0)
-		normal = normal + glm::vec3(volumeData[k * xsize * ysize + j * xsize + i + 1] - volumeData[k * xsize * ysize + j * xsize + 0], 0, 0);
-	if (i + 1 > xsize)
-		normal = normal + glm::vec3(volumeData[k * xsize * ysize + j * xsize + xsize] - volumeData[k * xsize * ysize + j * xsize + i - 1], 0, 0);
-	if ((i - 1 > 0) && (i + 1 < xsize))
-		normal = normal + glm::vec3(volumeData[k * xsize * ysize + j * xsize + i + 1] - volumeData[k * xsize * ysize + j * xsize + i - 1], 0, 0);
-
-
-	if (j - 1 < 0)
-		normal = normal + glm::vec3(0, volumeData[k * xsize * ysize + (j + 1) * xsize + i] - volumeData[k * xsize * ysize + 0 * xsize + i], 0);
-	if (j + 1 > ysize)
-		normal = normal + glm::vec3(0, volumeData[k * xsize * ysize + ysize * xsize + i] - volumeData[k * xsize * ysize + (j - 1) * xsize + i], 0);
-	if ((j - 1 > 0)&&(j + 1 < ysize))
-		normal = normal + glm::vec3(0, volumeData[k * xsize * ysize + (j + 1) * xsize + i] - volumeData[k * xsize * ysize + (j - 1) * xsize + i], 0);
-
-
-	if (k - 1 < 0)
-		normal = normal + glm::vec3(0, 0, volumeData[(k + 1) * xsize * ysize + j * xsize + i] - volumeData[0 * xsize * ysize + j * xsize + i]);
-	if (k + 1 > zsize)
-		normal = normal + glm::vec3(0, 0, volumeData[zsize * xsize * ysize + j * xsize + i] - volumeData[(k - 1) * xsize * ysize + j * xsize + i]);
-	if ((k - 1 > 0) && (k + 1 < zsize))
-		normal = normal + glm::vec3(0, 0, volumeData[(k + 1) * xsize * ysize + j * xsize + i] - volumeData[(k - 1) * xsize * ysize + j * xsize + i]);
-
-	return normal;
+	return glm::vec3(
+		sample(right, j, k) - sample(left, j, k),
+		sample(i, up, k) - sample(i, down, k),
+		sample(i, j, front) - sample(i, j, back));
 }
 
 
@@ -223,9 +218,8 @@ glm::vec3 MarchingCubes::VertexNormal(int i, int j, int k)
 void MarchingCubes::reconstructSurface(Mesh *mesh)
 {
 	GRIDCELL grid;
-	TRIANGLE triangles[10];
-
-	int ntri = 0;
+	TRIANGLE triangles[5];
+	vector<TRIANGLE> surfaceTriangles;
 	
 	int i, j, k, n, l;
 
@@ -236,8 +230,6 @@ void MarchingCubes::reconstructSurface(Mesh *mesh)
 		{
 			for (k = 0; k < zsize - 1; k++)
 			{
-				//TODO - completeaza informatiile din voxelul "grid" in functie de "volumeData"
-				
 				//p[0] cu(i, j, k)
 				grid.p[0] = glm::vec3(i,j,k); 
 				grid.val[0] = volumeData[k*xsize*ysize + j*xsize + i];
@@ -281,10 +273,8 @@ void MarchingCubes::reconstructSurface(Mesh *mesh)
 
 				n = PolygoniseCube(grid,isolevel,triangles);
 				
-				tri = (TRIANGLE*)realloc(tri, (ntri + n) * sizeof(TRIANGLE));
 				for (l = 0; l<n; l++)
-					tri[ntri + l] = triangles[l];
-				ntri += n;
+					surfaceTriangles.push_back(triangles[l]);
 			}
 		}
 	}
@@ -292,15 +282,18 @@ void MarchingCubes::reconstructSurface(Mesh *mesh)
 	vector<glm::vec3> positions;
 	vector<glm::vec3> normals;
 	vector<unsigned int> indices;
-	for (i = 0; i < ntri; i++)
+	positions.reserve(surfaceTriangles.size() * 3);
+	normals.reserve(surfaceTriangles.size() * 3);
+	indices.reserve(surfaceTriangles.size() * 3);
+	for (i = 0; i < static_cast<int>(surfaceTriangles.size()); i++)
 	{
-		positions.push_back(glm::vec3(tri[i].p[0].x, tri[i].p[0].y, tri[i].p[0].z));
-		positions.push_back(glm::vec3(tri[i].p[1].x, tri[i].p[1].y, tri[i].p[1].z));
-		positions.push_back(glm::vec3(tri[i].p[2].x, tri[i].p[2].y, tri[i].p[2].z));
+		positions.push_back(surfaceTriangles[i].p[0]);
+		positions.push_back(surfaceTriangles[i].p[1]);
+		positions.push_back(surfaceTriangles[i].p[2]);
 		
-		normals.push_back(glm::vec3(tri[i].n[0].x, tri[i].n[0].y, tri[i].n[0].z));
-		normals.push_back(glm::vec3(tri[i].n[1].x, tri[i].n[1].y, tri[i].n[1].z));
-		normals.push_back(glm::vec3(tri[i].n[2].x, tri[i].n[2].y, tri[i].n[2].z));
+		normals.push_back(surfaceTriangles[i].n[0]);
+		normals.push_back(surfaceTriangles[i].n[1]);
+		normals.push_back(surfaceTriangles[i].n[2]);
 
 		indices.push_back(i * 3);
 		indices.push_back(i * 3 + 1);
@@ -313,22 +306,20 @@ void MarchingCubes::reconstructSurface(Mesh *mesh)
 
 void MarchingCubes::Init()
 {
-	tri = NULL;
-
 	auto camera = GetSceneCamera();
 	camera->SetPositionAndRotation(glm::vec3(2, 5, 10), glm::quat(glm::vec3(-30 * TO_RADIANS, 0, 0)));
 	camera->Update();
 
 	// Load a mesh from file into GPU memory
 	{
-		loadRAWFile(RESOURCE_PATH::VOLUMES + "Bucky.raw", 32, 32, 32);
-		isolevel = 50;
+		if (!loadRAWFile(volumeFile, configuredWidth, configuredHeight, configuredDepth))
+			throw runtime_error("Unable to initialize Marching Cubes volume resources.");
 		Mesh* mesh_volume = new Mesh("volume");
 		reconstructSurface(mesh_volume);
 		meshes[mesh_volume->GetMeshID()] = mesh_volume;
 	}
 
-	std::string shaderPath = "Source/Laboratoare/MarchingCubes/Shaders/";
+	std::string shaderPath = RESOURCE_PATH::SHADERS + "MarchingCubes/";
 
 	// Create a shader program for rendering to texture
 	{
@@ -366,29 +357,21 @@ void MarchingCubes::FrameEnd()
 
 void MarchingCubes::OnInputUpdate(float deltaTime, int mods)
 {
-
-	//TODO schimba isovaloarea
-	if (window->KeyHold(GLFW_KEY_Z) && isolevel < 200)
-	{
-
-		isolevel += 100 * deltaTime;
-		cout << "Iso value:" << isolevel << endl;
-		reconstructSurface(meshes["volume"]);
-	}
-		
-	if (window->KeyHold(GLFW_KEY_X) && isolevel > 5)
-	{
-		isolevel -= 100 * deltaTime;
-		cout << "Iso value:" << isolevel << endl;
-		reconstructSurface(meshes["volume"]);
-	}
 };
 
 void MarchingCubes::OnKeyPress(int key, int mods)
 {
-	
-
-
+	double updatedIsolevel = isolevel;
+	if (key == GLFW_KEY_Z)
+		updatedIsolevel = min(255.0, isolevel + 5.0);
+	if (key == GLFW_KEY_X)
+		updatedIsolevel = max(0.0, isolevel - 5.0);
+	if (updatedIsolevel != isolevel)
+	{
+		isolevel = updatedIsolevel;
+		cout << "Iso value: " << isolevel << endl;
+		reconstructSurface(meshes["volume"]);
+	}
 };
 
 void MarchingCubes::OnKeyRelease(int key, int mods)

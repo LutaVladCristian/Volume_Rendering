@@ -26,9 +26,11 @@ void GPUBuffers::CreateBuffers(unsigned int size)
 void GPUBuffers::ReleaseMemory()
 {
 	if (size) {
-		size = 0;
 		glDeleteVertexArrays(1, &VAO);
 		glDeleteBuffers(size, VBO);
+		size = 0;
+		VAO = 0;
+		memset(VBO, 0, 6 * sizeof(int));
 	}
 }
 

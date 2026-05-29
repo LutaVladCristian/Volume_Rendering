@@ -1,5 +1,8 @@
 #include "ray_casting.h"
 
+#include <algorithm>
+#include <fstream>
+#include <stdexcept>
 #include <vector>
 #include <iostream>
 
@@ -8,14 +11,23 @@
 using namespace std;
 
 
-RayCasting::RayCasting()
+RayCasting::RayCasting(const string& volumeFile, unsigned int width, unsigned int height,
+	unsigned int depth, const string& transferFunctionFile)
+	: volumeData(nullptr), xsize(0), ysize(0), zsize(0), frameBuffer(nullptr),
+	volumeTexture(0), tfTexture(0), stepSize(0.001f), volumeFile(volumeFile),
+	transferFunctionFile(transferFunctionFile), configuredWidth(width),
+	configuredHeight(height), configuredDepth(depth)
 {
 }
 
 RayCasting::~RayCasting()
 {
 	delete[] volumeData;
-	 
+	delete frameBuffer;
+	if (volumeTexture)
+		glDeleteTextures(1, &volumeTexture);
+	if (tfTexture)
+		glDeleteTextures(1, &tfTexture);
 }
 
 Mesh* RayCasting::createCube(const char *name)
@@ -55,7 +67,8 @@ Mesh* RayCasting::createCube(const char *name)
 
 GLuint RayCasting::createVolumeTexture(const string& fileLocation, unsigned int x, unsigned int y, unsigned int z) {
 	
-	loadRAWFile(fileLocation, x, y, z);
+	if (!loadRAWFile(fileLocation, x, y, z))
+		return 0;
 	
 	GLuint g_volTexObj;
 	glGenTextures(1, &g_volTexObj);
@@ -63,12 +76,14 @@ GLuint RayCasting::createVolumeTexture(const string& fileLocation, unsigned int 
 	glBindTexture(GL_TEXTURE_3D, g_volTexObj);
 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 	// pixel transfer happens here from client to OpenGL server
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glTexImage3D(GL_TEXTURE_3D, 0, GL_INTENSITY, xsize, ysize, zsize, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, volumeData);
+	glTexImage3D(GL_TEXTURE_3D, 0, GL_R8, xsize, ysize, zsize, 0, GL_RED, GL_UNSIGNED_BYTE, volumeData);
+	delete[] volumeData;
+	volumeData = nullptr;
 
 	cout << "Volume texture created" << endl;
 	return g_volTexObj;
@@ -76,41 +91,32 @@ GLuint RayCasting::createVolumeTexture(const string& fileLocation, unsigned int 
 
 
 GLuint RayCasting::createTFTexture(const string& fileLocation) {
-	// read in the user defined data of transfer function
-	ifstream inFile(fileLocation.c_str(), ifstream::in);
+	const size_t textureBytes = 256 * 4;
+	vector<GLubyte> transferData(textureBytes);
+	ifstream inFile(fileLocation.c_str(), ios::in | ios::binary);
 	if (!inFile)
 	{
-		cerr << "Error openning file: " << fileLocation << endl;
-		exit(EXIT_FAILURE);
+		cerr << "Error opening transfer function file: " << fileLocation << endl;
+		return 0;
 	}
 
-	const int MAX_CNT = 10000;
-	GLubyte *tff = (GLubyte *)calloc(MAX_CNT, sizeof(GLubyte));
-	inFile.read(reinterpret_cast<char *>(tff), MAX_CNT);
-	if (inFile.eof())
+	inFile.read(reinterpret_cast<char*>(transferData.data()), textureBytes);
+	if (static_cast<size_t>(inFile.gcount()) != textureBytes)
 	{
-		size_t bytecnt = inFile.gcount();
-		*(tff + bytecnt) = '\0';
-		cout << "Transfer function read: byte count = " << bytecnt << endl;
+		cerr << "Transfer function must contain at least " << textureBytes
+			<< " bytes: " << fileLocation << endl;
+		return 0;
+	}
+	cout << "Transfer function read: byte count = " << textureBytes << endl;
 
-	}
-	else if (inFile.fail())
-	{
-		cout << fileLocation << "read failed " << endl;
-	}
-	else
-	{
-		cout << fileLocation << "is too large" << endl;
-	}
 	GLuint tff1DTex;
 	glGenTextures(1, &tff1DTex);
 	glBindTexture(GL_TEXTURE_1D, tff1DTex);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, tff);
-	free(tff);
+	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, transferData.data());
 	return tff1DTex;
 }
 
@@ -120,7 +126,7 @@ bool RayCasting::loadRAWFile(const string& fileLocation, unsigned int x, unsigne
 	
 	FILE *File = NULL;
 
-	if (!fileLocation.c_str())
+	if (fileLocation.empty())
 	{
 		cout << fileLocation << "does not exist" << endl;
 		return false;
@@ -139,17 +145,20 @@ bool RayCasting::loadRAWFile(const string& fileLocation, unsigned int x, unsigne
 	xsize = x;
 	ysize = y;
 	zsize = z;
+	delete[] volumeData;
 	volumeData = new unsigned char[xsize * ysize * zsize];
 
-	int sliceSize = xsize*ysize;
-
-	for (int slice = 0; slice < zsize; slice++)
-	{
-		fread(&volumeData[slice*ysize*xsize], sizeof(unsigned char), sliceSize, File);
-
-	}
-
+	const size_t voxelCount = static_cast<size_t>(xsize) * ysize * zsize;
+	const size_t bytesRead = fread(volumeData, sizeof(unsigned char), voxelCount, File);
 	fclose(File);
+	if (bytesRead != voxelCount)
+	{
+		cerr << fileLocation << " contains " << bytesRead << " voxels; expected "
+			<< voxelCount << endl;
+		delete[] volumeData;
+		volumeData = nullptr;
+		return false;
+	}
 
 	return true;
 
@@ -161,16 +170,13 @@ void RayCasting::Init()
 	frameBuffer = new FrameBuffer();
 	auto resolution = window->GetResolution();
 	frameBuffer->Generate(resolution.x, resolution.y, 3);
-	stepSize = 0.001f;
-	
-
 	auto camera = GetSceneCamera();
 	camera->SetPositionAndRotation(glm::vec3(1, 0.2, 2), glm::quat(glm::vec3(-30 * TO_RADIANS, 45 * TO_RADIANS, 0)));
 	camera->Update();
 
 	Mesh *cube = createCube("cube");
 
-	std::string shaderPath = "Source/Laboratoare/RayCasting/Shaders/";
+	std::string shaderPath = RESOURCE_PATH::SHADERS + "RayCasting/";
 
 	{
 		Shader *shader = new Shader("BackFaceShader");
@@ -190,8 +196,10 @@ void RayCasting::Init()
 	}
 
 
-	volumeTexture = createVolumeTexture(RESOURCE_PATH::VOLUMES + "head256.raw",256,256, 225);
-	tfTexture = createTFTexture(RESOURCE_PATH::VOLUMES + "tff.dat");
+	volumeTexture = createVolumeTexture(volumeFile, configuredWidth, configuredHeight, configuredDepth);
+	tfTexture = createTFTexture(transferFunctionFile);
+	if (!volumeTexture || !tfTexture)
+		throw runtime_error("Unable to initialize ray-casting volume resources.");
 }
 
 void RayCasting::FrameStart()
@@ -268,7 +276,12 @@ void RayCasting::OnInputUpdate(float deltaTime, int mods)
 
 void RayCasting::OnKeyPress(int key, int mods)
 {
-
+	if (key == GLFW_KEY_LEFT_BRACKET)
+		stepSize = max(0.0001f, stepSize / 1.25f);
+	if (key == GLFW_KEY_RIGHT_BRACKET)
+		stepSize = min(0.02f, stepSize * 1.25f);
+	if (key == GLFW_KEY_LEFT_BRACKET || key == GLFW_KEY_RIGHT_BRACKET)
+		cout << "Ray step size: " << stepSize << endl;
 };
 
 void RayCasting::OnKeyRelease(int key, int mods)
